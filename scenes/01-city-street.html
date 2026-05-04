@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>01 · City Street</title>
+  <link rel="stylesheet" href="../shared/style.css">
+</head>
+<body class="scene">
+  <a class="back-link" href="../index.html">← gallery</a>
+  <div class="scene-label">01 · city street</div>
+  <script src="../shared/engine.js"></script>
+  <script>
+  (function () {
+    const scene = Pixel.createScene({ width: 180, height: 320 });
+    const P = Pixel.PALETTE;
+    const { fillRect, lerpColor, clamp, pixel } = Pixel;
+
+    // Extended teal night palette (Endesga-flavoured, but the reference uses cool teals
+    // that aren't in E32 — bent for visual fidelity).
+    const COL = {
+      sky_top:     '#0a1c22',
+      sky_mid:     '#13303a',
+      sky_bot:     '#1c4452',
+
+      bldg_far:    '#3d6068',     // distant, lightest
+      bldg_mid:    '#26474f',     // middle layer
+      bldg_front:  '#152e36',     // foreground
+      bldg_silh:   '#0a1c22',     // very dark silhouette accents
+
+      accent_or:   '#c25b3a',     // warm orange building (between blood/rust)
+      accent_or2:  '#7a3a2c',     // shadow of orange building
+
+      tree:        '#08161a',
+      tree_lit:    '#15303a',
+      ground:      '#0e2026',
+      sidewalk:    '#1a323a',
+
+      lamp_glow:   P.amber,        // #feae34
+      lamp_post:   '#0a1c22',
+      lamp_core:   P.yellow,
+
+      win_amber:   P.amber,        // #feae34
+      win_yellow:  P.yellow,       // #fee761
+      win_orange:  P.orange,       // #f77622
+      win_cyan:    '#7fb8c2',
+      win_blue:    '#3d7a86',
+      win_red:     '#e85a3a',
+
+      win_dim_far:   '#2c4c54',
+      win_dim_mid:   '#1c343c',
+      win_dim_front: '#0e2026',
+      win_dim_or:    '#5a2c22',
+
+      blinker_red: P.red,
+    };
+
+    let time = 0;
+    const STREET_Y = 290;        // street/sidewalk top — building bases sit here
+    const SIDEWALK_Y = 305;      // sidewalk top edge
+
+    // ---------- Buildings ----------
+    const buildings = [];
+
+    function addBuilding(opts) {
+      const b = Object.assign({
+        x: 0, w: 30, h: 100,
+        baseY: STREET_Y,
+        color: COL.bldg_mid,
+        edgeShade: 0.12,
+        style: 'grid',          // 'grid' | 'stripes' | 'cols' | 'mixed'
+        winColor: COL.win_amber,
+        winColorAlt: null,      // optional secondary lit color (per row)
+        dimColor: COL.win_dim_mid,
+        density: 0.7,
+        depth: 1,
+        flickerChance: 0.05,
+        antennaH: 0,
+        setbackH: 0,
+        setbackInset: 4,
+        setbackHasWindows: true,
+        sign: null,             // optional rooftop sign color
+      }, opts);
+
+      b.windows = [];
+      const innerW = b.w - 4;
+
+      if (b.style === 'grid') {
+        for (let cy = 4; cy + 2 < b.h - 2; cy += 4) {
+          for (let cx = 2; cx + 2 < b.w - 2; cx += 4) {
+            const altRow = b.winColorAlt && Math.floor(cy / 4) % 3 === 0;
+            b.windows.push({
+              x: cx, y: cy, w: 2, h: 2,
+              color: altRow ? b.winColorAlt : b.winColor,
+              lit: Math.random() < b.density,
+              flicker: Math.random() < b.flickerChance ? 1 + Math.random() * 5 : 0,
+            });
+          }
+        }
+      } else if (b.style === 'stripes') {
+        // Reflective glass tower — horizontal stripes always "on", muted
+        for (let cy = 4; cy < b.h - 3; cy += 3) {
+          b.windows.push({
+            x: 1, y: cy, w: b.w - 2, h: 1,
+            color: b.winColor, lit: true, flicker: 0,
+          });
+        }
+      } else if (b.style === 'cols') {
+        // Vertical column lighting (elevator/stairwell)
+        for (let cx = 2; cx + 1 < b.w - 2; cx += 3) {
+          b.windows.push({
+            x: cx, y: 3, w: 1, h: b.h - 5,
+            color: Math.random() < 0.5 ? b.winColor : (b.winColorAlt || b.winColor),
+            lit: Math.random() < b.density, flicker: 0,
+          });
+        }
+      } else if (b.style === 'mixed') {
+        // Tight grid of 1×3 vertical windows
+        for (let cy = 3; cy + 3 < b.h - 2; cy += 4) {
+          for (let cx = 2; cx + 1 < b.w - 2; cx += 3) {
+            b.windows.push({
+              x: cx, y: cy, w: 1, h: 3,
+              color: b.winColor,
+              lit: Math.random() < b.density,
+              flicker: Math.random() < b.flickerChance ? 1 + Math.random() * 5 : 0,
+            });
+          }
+        }
+      }
+
+      buildings.push(b);
+      return b;
+    }
+
+    // -- Back layer (distant, lightest, tallest) --
+    addBuilding({ x: -2,  w: 22, h: 130, color: COL.bldg_far,  style: 'grid',    winColor: COL.win_amber, dimColor: COL.win_dim_far, density: 0.35, depth: 0 });
+    addBuilding({ x: 18,  w: 18, h: 165, color: COL.bldg_far,  style: 'stripes', winColor: COL.win_cyan,  dimColor: COL.win_dim_far, depth: 0, antennaH: 14 });
+    addBuilding({ x: 34,  w: 26, h: 190, color: COL.bldg_far,  style: 'mixed',   winColor: COL.win_cyan,  dimColor: COL.win_dim_far, density: 0.5, depth: 0, setbackH: 22, setbackInset: 5 });
+    addBuilding({ x: 58,  w: 18, h: 145, color: COL.bldg_far,  style: 'grid',    winColor: COL.win_cyan,  dimColor: COL.win_dim_far, density: 0.45, depth: 0 });
+    addBuilding({ x: 74,  w: 24, h: 215, color: COL.bldg_far,  style: 'stripes', winColor: COL.win_cyan,  dimColor: COL.win_dim_far, depth: 0, setbackH: 18, setbackInset: 5, antennaH: 22 });
+    addBuilding({ x: 96,  w: 28, h: 175, color: COL.bldg_far,  style: 'cols',    winColor: COL.win_blue,  winColorAlt: COL.win_cyan, dimColor: COL.win_dim_far, density: 0.55, depth: 0 });
+    addBuilding({ x: 122, w: 18, h: 155, color: COL.bldg_far,  style: 'grid',    winColor: COL.win_amber, dimColor: COL.win_dim_far, density: 0.45, depth: 0 });
+    addBuilding({ x: 138, w: 24, h: 195, color: COL.bldg_far,  style: 'mixed',   winColor: COL.win_cyan,  dimColor: COL.win_dim_far, density: 0.5, depth: 0, antennaH: 16 });
+    addBuilding({ x: 160, w: 22, h: 160, color: COL.bldg_far,  style: 'stripes', winColor: COL.win_cyan,  dimColor: COL.win_dim_far, depth: 0 });
+
+    // -- Mid layer --
+    addBuilding({ x: -2,  w: 16, h: 80,  color: COL.bldg_mid,  style: 'grid',    winColor: COL.win_amber,  dimColor: COL.win_dim_mid, density: 0.6, depth: 1 });
+    addBuilding({ x: 14,  w: 22, h: 110, color: COL.bldg_mid,  style: 'mixed',   winColor: COL.win_cyan,   dimColor: COL.win_dim_mid, density: 0.55, depth: 1, antennaH: 10 });
+    addBuilding({ x: 36,  w: 26, h: 150, color: COL.accent_or, style: 'grid',    winColor: COL.win_yellow, dimColor: COL.win_dim_or,  density: 0.78, depth: 1 });   // ORANGE
+    addBuilding({ x: 60,  w: 18, h: 95,  color: COL.bldg_mid,  style: 'stripes', winColor: COL.win_cyan,   dimColor: COL.win_dim_mid, depth: 1 });
+    addBuilding({ x: 76,  w: 30, h: 165, color: COL.bldg_mid,  style: 'mixed',   winColor: COL.win_cyan,   dimColor: COL.win_dim_mid, density: 0.6, depth: 1, setbackH: 26, setbackInset: 6 });
+    addBuilding({ x: 104, w: 16, h: 95,  color: COL.bldg_mid,  style: 'grid',    winColor: COL.win_amber,  dimColor: COL.win_dim_mid, density: 0.55, depth: 1 });
+    addBuilding({ x: 118, w: 22, h: 130, color: COL.bldg_mid,  style: 'cols',    winColor: COL.win_blue,   winColorAlt: COL.win_cyan, dimColor: COL.win_dim_mid, density: 0.6, depth: 1, antennaH: 12 });
+    addBuilding({ x: 138, w: 18, h: 105, color: COL.bldg_mid,  style: 'grid',    winColor: COL.win_amber,  dimColor: COL.win_dim_mid, density: 0.6, depth: 1 });
+    addBuilding({ x: 154, w: 28, h: 145, color: COL.bldg_mid,  style: 'stripes', winColor: COL.win_cyan,   dimColor: COL.win_dim_mid, depth: 1, setbackH: 14, setbackInset: 5 });
+
+    // -- Front layer (shorter) --
+    addBuilding({ x: -2,  w: 24, h: 60,  color: COL.bldg_front, style: 'grid',  winColor: COL.win_amber,  dimColor: COL.win_dim_front, density: 0.65, depth: 2 });
+    addBuilding({ x: 22,  w: 20, h: 78,  color: COL.bldg_front, style: 'mixed', winColor: COL.win_yellow, dimColor: COL.win_dim_front, density: 0.7, depth: 2 });
+    addBuilding({ x: 42,  w: 14, h: 50,  color: COL.bldg_front, style: 'grid',  winColor: COL.win_amber,  dimColor: COL.win_dim_front, density: 0.6, depth: 2 });
+    addBuilding({ x: 56,  w: 20, h: 86,  color: COL.accent_or,  style: 'grid',  winColor: COL.win_orange, dimColor: COL.win_dim_or,    density: 0.82, depth: 2 });   // ORANGE
+    addBuilding({ x: 76,  w: 18, h: 56,  color: COL.bldg_front, style: 'mixed', winColor: COL.win_amber,  dimColor: COL.win_dim_front, density: 0.65, depth: 2 });
+    addBuilding({ x: 94,  w: 24, h: 70,  color: COL.bldg_front, style: 'grid',  winColor: COL.win_cyan,   dimColor: COL.win_dim_front, density: 0.6, depth: 2 });
+    addBuilding({ x: 118, w: 16, h: 52,  color: COL.bldg_front, style: 'mixed', winColor: COL.win_amber,  dimColor: COL.win_dim_front, density: 0.7, depth: 2 });
+    addBuilding({ x: 134, w: 22, h: 75,  color: COL.bldg_front, style: 'grid',  winColor: COL.win_yellow, dimColor: COL.win_dim_front, density: 0.65, depth: 2 });
+    addBuilding({ x: 156, w: 26, h: 62,  color: COL.bldg_front, style: 'mixed', winColor: COL.win_amber,  dimColor: COL.win_dim_front, density: 0.7, depth: 2 });
+
+    // ---------- Trees (street level silhouettes) ----------
+    const trees = [];
+    const treeData = [
+      { x: 8,   y: 298, r: 5 },
+      { x: 24,  y: 299, r: 4 },
+      { x: 44,  y: 297, r: 5 },
+      { x: 78,  y: 299, r: 4 },
+      { x: 92,  y: 298, r: 5 },
+      { x: 116, y: 299, r: 4 },
+      { x: 132, y: 297, r: 5 },
+      { x: 154, y: 299, r: 4 },
+      { x: 170, y: 298, r: 5 },
+    ];
+    for (const t of treeData) {
+      trees.push({
+        x: t.x, y: t.y, r: t.r,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+
+    // ---------- Streetlamps ----------
+    const lamps = [
+      { x: 16,  y: 304 },
+      { x: 56,  y: 304 },
+      { x: 102, y: 304 },
+      { x: 144, y: 304 },
+      { x: 174, y: 304 },
+    ];
+
+    // ---------- Rain streaks ----------
+    const rain = [];
+    for (let i = 0; i < 36; i++) {
+      rain.push({
+        x: Math.random() * 200 - 10,
+        y: Math.random() * 320,
+        len: 4 + Math.random() * 5,
+        speed: 70 + Math.random() * 60,
+        front: Math.random() < 0.25,
+      });
+    }
+
+    // ---------- Tap interaction: flash a building ----------
+    let flashedBuilding = null;
+    let flashT = 0;
+
+    scene.onTap((x, y) => {
+      // Iterate front to back so foreground gets priority
+      for (let i = buildings.length - 1; i >= 0; i--) {
+        const b = buildings[i];
+        const top = b.baseY - b.h - (b.setbackH || 0);
+        if (x >= b.x && x < b.x + b.w && y >= top && y <= b.baseY) {
+          flashedBuilding = b;
+          flashT = 0.9;
+          return;
+        }
+      }
+    });
+
+    // ---------- Update ----------
+    function update(dt) {
+      time += dt;
+
+      for (const b of buildings) {
+        for (const w of b.windows) {
+          if (w.flicker > 0) {
+            w.flicker -= dt;
+            if (w.flicker <= 0) {
+              w.lit = !w.lit;
+              w.flicker = 0.4 + Math.random() * 4;
+            }
+          }
+        }
+      }
+
+      for (const r of rain) {
+        r.y += r.speed * dt * (r.front ? 1.6 : 1);
+        r.x += r.speed * 0.18 * dt;
+        if (r.y > 326 || r.x > 200) {
+          r.y = -10;
+          r.x = Math.random() * 200 - 20;
+        }
+      }
+
+      if (flashT > 0) flashT -= dt;
+    }
+
+    // ---------- Drawing ----------
+    function drawSky(ctx) {
+      const splitA = 80, splitB = 200;
+      for (let y = 0; y < 320; y++) {
+        let c;
+        if (y < splitA)      c = lerpColor(COL.sky_top, COL.sky_mid, y / splitA);
+        else if (y < splitB) c = lerpColor(COL.sky_mid, COL.sky_bot, (y - splitA) / (splitB - splitA));
+        else                 c = COL.sky_bot;
+        fillRect(ctx, 0, y, 180, 1, c);
+      }
+    }
+
+    function drawRain(ctx, frontLayer) {
+      ctx.strokeStyle = frontLayer ? '#7faabc' : '#3a5a64';
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = frontLayer ? 0.5 : 0.32;
+      ctx.beginPath();
+      for (const r of rain) {
+        if (!!r.front !== frontLayer) continue;
+        ctx.moveTo(r.x, r.y);
+        ctx.lineTo(r.x - r.len * 0.18, r.y - r.len);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawBuilding(ctx, b) {
+      const top = b.baseY - b.h;
+      // Body
+      fillRect(ctx, b.x, top, b.w, b.h, b.color);
+      // Edge highlight (left side, subtle)
+      const edge = lerpColor(b.color, '#ffffff', b.edgeShade);
+      fillRect(ctx, b.x, top, 1, b.h, edge);
+      // Right shadow
+      const shade = lerpColor(b.color, '#000000', 0.25);
+      fillRect(ctx, b.x + b.w - 1, top, 1, b.h, shade);
+
+      // Setback (narrower top portion)
+      let setTop = top;
+      if (b.setbackH > 0) {
+        setTop = top - b.setbackH;
+        const sx = b.x + b.setbackInset;
+        const sw = b.w - b.setbackInset * 2;
+        fillRect(ctx, sx, setTop, sw, b.setbackH, b.color);
+        fillRect(ctx, sx, setTop, 1, b.setbackH, edge);
+        fillRect(ctx, sx + sw - 1, setTop, 1, b.setbackH, shade);
+        // Setback windows (smaller pattern)
+        if (b.setbackHasWindows) {
+          for (let cy = 2; cy + 2 < b.setbackH; cy += 4) {
+            for (let cx = 1; cx + 2 < sw - 1; cx += 4) {
+              if (Math.random() < 0.4) continue; // pre-baked-ish; not animated
+              fillRect(ctx, sx + 1 + cx, setTop + cy, 2, 2, b.winColor);
+            }
+          }
+        }
+      }
+
+      // Windows
+      const flashing = flashedBuilding === b && flashT > 0;
+      const flashAlpha = flashT > 0 ? clamp(flashT / 0.9, 0, 1) : 0;
+      for (const w of b.windows) {
+        const lit = flashing || w.lit;
+        const c = lit ? w.color : b.dimColor;
+        fillRect(ctx, b.x + w.x, top + w.y, w.w, w.h, c);
+      }
+      // Subtle flash highlight on the building itself
+      if (flashing) {
+        ctx.globalAlpha = flashAlpha * 0.12;
+        fillRect(ctx, b.x, top, b.w, b.h, COL.win_amber);
+        ctx.globalAlpha = 1;
+      }
+
+      // Antenna
+      if (b.antennaH > 0) {
+        const aTop = setTop - b.antennaH;
+        const ax = b.x + Math.floor(b.w / 2);
+        fillRect(ctx, ax, aTop, 1, b.antennaH, lerpColor(b.color, '#000000', 0.5));
+        if (Math.floor(time * 1.6) % 2 === 0) {
+          pixel(ctx, ax, aTop, COL.blinker_red);
+          pixel(ctx, ax - 1, aTop + 1, lerpColor(COL.blinker_red, '#000000', 0.6));
+        }
+      }
+    }
+
+    function drawTree(ctx, t) {
+      const sway = Math.sin(time * 0.6 + t.phase) * 0.5;
+      const cx = t.x + sway;
+      const cy = t.y;
+      // Diamond/circle blob
+      for (let dy = -t.r; dy <= t.r; dy++) {
+        const w = t.r - Math.abs(dy);
+        if (w <= 0) continue;
+        fillRect(ctx, Math.round(cx - w), cy + dy, w * 2 + 1, 1, COL.tree);
+      }
+      // small highlights — top-right rim
+      pixel(ctx, Math.round(cx - 1), cy - t.r + 1, COL.tree_lit);
+      pixel(ctx, Math.round(cx + 2), cy - t.r + 2, COL.tree_lit);
+      pixel(ctx, Math.round(cx + t.r - 1), cy, COL.tree_lit);
+      // trunk
+      fillRect(ctx, Math.round(cx), cy + t.r, 1, 3, COL.tree);
+    }
+
+    function drawLamp(ctx, l) {
+      const flick = 1 + Math.sin(time * 3 + l.x) * 0.05;
+      // Soft outer halo
+      ctx.globalAlpha = 0.07 * flick;
+      fillRect(ctx, l.x - 12, l.y - 26, 25, 24, COL.lamp_glow);
+      ctx.globalAlpha = 0.14 * flick;
+      fillRect(ctx, l.x - 7, l.y - 22, 15, 18, COL.lamp_glow);
+      ctx.globalAlpha = 0.28 * flick;
+      fillRect(ctx, l.x - 4, l.y - 18, 9, 12, COL.lamp_glow);
+      ctx.globalAlpha = 1;
+      // Post
+      fillRect(ctx, l.x, l.y - 14, 1, 14, COL.lamp_post);
+      fillRect(ctx, l.x - 1, l.y - 1, 3, 1, COL.lamp_post);
+      // Bulb housing
+      fillRect(ctx, l.x - 1, l.y - 16, 3, 2, COL.lamp_glow);
+      pixel(ctx, l.x, l.y - 16, COL.lamp_core);
+    }
+
+    function draw(ctx) {
+      drawSky(ctx);
+
+      // Distant rain (behind buildings)
+      drawRain(ctx, false);
+
+      // Buildings: back to front
+      const sorted = buildings.slice().sort((a, b) => a.depth - b.depth);
+      for (const b of sorted) drawBuilding(ctx, b);
+
+      // Tiny window flicker glow on darkest foreground silhouettes (atmosphere)
+      // (skipped — covered by per-window flicker)
+
+      // Ground / sidewalk
+      fillRect(ctx, 0, STREET_Y, 180, 320 - STREET_Y, COL.ground);
+      fillRect(ctx, 0, SIDEWALK_Y, 180, 1, COL.sidewalk);
+      // Faint sidewalk seam ticks
+      for (let sx = 4; sx < 180; sx += 14) {
+        pixel(ctx, sx, SIDEWALK_Y + 4, lerpColor(COL.sidewalk, '#000', 0.3));
+      }
+
+      // Trees
+      for (const t of trees) drawTree(ctx, t);
+
+      // Lamps
+      for (const l of lamps) drawLamp(ctx, l);
+
+      // Foreground rain (sharper)
+      drawRain(ctx, true);
+    }
+
+    scene.start({ update, draw });
+  })();
+  </script>
+</body>
+</html>

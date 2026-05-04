@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>05 · Daylight City</title>
+  <link rel="stylesheet" href="../shared/style.css">
+</head>
+<body class="scene">
+  <a class="back-link" href="../index.html">← gallery</a>
+  <div class="scene-label">05 · daylight city</div>
+  <script src="../shared/engine.js"></script>
+  <script>
+  (function () {
+    const scene = Pixel.createScene({ width: 180, height: 320 });
+    const { fillRect, lerpColor, pixel } = Pixel;
+
+    const COL = {
+      sky_top:      '#5cc8d8',
+      sky_bot:      '#86d8e0',
+
+      cloud:        '#ffffff',
+      cloud_shade:  '#c8dce4',
+      cloud_dark:   '#a4c0cc',
+
+      bird:         '#3a4466',
+
+      mid_a:        '#a8b2c0',
+      mid_b:        '#8898a8',
+      mid_c:        '#7088a0',
+      win_mid:      '#9ec4d0',
+
+      pink:         '#d6757a',
+      pink_d:       '#a8585c',
+      pink_h:       '#e4969a',
+
+      yellow:       '#ecb952',
+      yellow_d:     '#b88928',
+      yellow_h:     '#f4cd6e',
+
+      white:        '#e8ecf0',
+      white_d:      '#a8b0b8',
+      white_h:      '#ffffff',
+
+      gray:         '#7a8290',
+      gray_d:       '#5a6068',
+      gray_h:       '#9a9eaa',
+
+      coral:        '#c45052',
+      coral_d:      '#943234',
+      coral_h:      '#dc7274',
+
+      awning_pink:  '#e89098',
+      awning_blue:  '#5fa8c0',
+      awning_red:   '#c45050',
+
+      win_glass:    '#a8d4dc',
+      win_glass_d:  '#7ab0bc',
+      win_warm:     '#fee761',
+      win_dark:     '#3a4466',
+
+      tree:         '#88c474',
+      tree_d:       '#5e8a52',
+      tree_h:       '#a8d894',
+      trunk:        '#5a3826',
+
+      road:         '#888090',
+      road_d:       '#605068',
+      road_line:    '#fee761',
+      sidewalk:     '#a8a4ac',
+
+      car_dk:       '#2c2c40',
+      car_blue:     '#5a8aa8',
+      car_red:      '#c44e4e',
+      truck:        '#e8e8ec',
+    };
+
+    let time = 0;
+
+    // ---------- Layout y-bands ----------
+    const SIDEWALK_Y = 290;
+    const ROAD_Y     = 298;
+    const ROAD_BOT   = 320;
+    const MID_BASE   = 232;
+
+    // ---------- Chunky pixel clouds ----------
+    const clouds = [];
+    function makeCloud(x, y, scale) {
+      let puffs;
+      if (scale === 'big') {
+        puffs = [
+          { dx: 0,  dy: 10, w: 14, h: 10 },
+          { dx: 10, dy: 4,  w: 16, h: 16 },
+          { dx: 22, dy: 8,  w: 14, h: 12 },
+          { dx: 24, dy: 0,  w: 14, h: 12 },
+          { dx: 32, dy: 6,  w: 18, h: 14 },
+          { dx: 44, dy: 4,  w: 16, h: 16 },
+          { dx: 56, dy: 10, w: 14, h: 10 },
+          { dx: 64, dy: 6,  w: 12, h: 14 },
+          { dx: 4,  dy: 16, w: 64, h: 4 },
+          { dx: 14, dy: -2, w: 8,  h: 6 },
+          { dx: 38, dy: -4, w: 10, h: 6 },
+        ];
+      } else if (scale === 'med') {
+        puffs = [
+          { dx: 0,  dy: 6,  w: 10, h: 8 },
+          { dx: 6,  dy: 2,  w: 12, h: 10 },
+          { dx: 14, dy: 4,  w: 12, h: 8 },
+          { dx: 22, dy: 6,  w: 10, h: 8 },
+          { dx: 4,  dy: 12, w: 26, h: 2 },
+          { dx: 12, dy: 0,  w: 6,  h: 4 },
+        ];
+      } else {
+        puffs = [
+          { dx: 0,  dy: 4, w: 10, h: 6 },
+          { dx: 6,  dy: 1, w: 10, h: 7 },
+          { dx: 12, dy: 4, w: 8,  h: 6 },
+        ];
+      }
+      return { x, y, puffs, speed: 0.5 + Math.random() * 1.0, scale };
+    }
+    clouds.push(makeCloud(-30,  10, 'big'));
+    clouds.push(makeCloud( 70,  6,  'big'));
+    clouds.push(makeCloud(150, 50,  'med'));
+    clouds.push(makeCloud( 18, 70,  'med'));
+    clouds.push(makeCloud(110, 100, 'med'));
+    clouds.push(makeCloud(  0, 130, 'big'));
+    clouds.push(makeCloud(140, 22,  'small'));
+    clouds.push(makeCloud( 40, 38,  'small'));
+
+    // ---------- Birds ----------
+    const birds = [];
+    function spawnBird() {
+      const fromLeft = Math.random() < 0.5;
+      birds.push({
+        x: fromLeft ? -4 : 184,
+        y: 30 + Math.random() * 70,
+        speed: (fromLeft ? 1 : -1) * (8 + Math.random() * 6),
+        flap: Math.random() * 10,
+      });
+    }
+    for (let i = 0; i < 3; i++) spawnBird();
+
+    // ---------- Mid skyline ----------
+    const midBuildings = [
+      { x: -2,  w: 20, h: 50, color: COL.mid_a },
+      { x: 16,  w: 28, h: 70, color: COL.mid_b, antenna: 4 },
+      { x: 42,  w: 22, h: 45, color: COL.mid_a },
+      { x: 62,  w: 14, h: 58, color: COL.mid_c },
+      { x: 74,  w: 30, h: 52, color: COL.mid_a },
+      { x: 102, w: 16, h: 42, color: COL.mid_b },
+      { x: 116, w: 20, h: 68, color: COL.mid_c, antenna: 6 },
+      { x: 134, w: 24, h: 50, color: COL.mid_a },
+      { x: 156, w: 26, h: 60, color: COL.mid_b },
+    ];
+    for (const b of midBuildings) {
+      b.windows = [];
+      for (let cy = 4; cy + 2 < b.h - 4; cy += 5) {
+        for (let cx = 2; cx + 2 < b.w - 2; cx += 4) {
+          if (Math.random() < 0.6) b.windows.push({ x: cx, y: cy });
+        }
+      }
+    }
+
+    // ---------- Foreground modern buildings ----------
+    const fgBuildings = [];
+    function addFg(opts) {
+      const b = Object.assign({
+        x: 0, y: 0, w: 30, h: 80,
+        color: COL.gray, shade: COL.gray_d, highlight: COL.gray_h,
+        style: 'modern',
+        antenna: false,
+        awning: null,
+        rooftop: false,
+      }, opts);
+      fgBuildings.push(b);
+    }
+
+    addFg({ x: -2,  y: 238, w: 24, h: 52,  color: COL.white, shade: COL.white_d, highlight: COL.white_h,
+            style: 'simple', awning: { color: COL.yellow, w: 22, h: 4 } });
+    addFg({ x: 22,  y: 188, w: 32, h: 102, color: COL.pink,  shade: COL.pink_d,  highlight: COL.pink_h,
+            style: 'pinkmodern', antenna: true, rooftop: true });
+    addFg({ x: 54,  y: 220, w: 18, h: 70,  color: COL.gray,  shade: COL.gray_d,  highlight: COL.gray_h, style: 'simple' });
+    addFg({ x: 72,  y: 202, w: 28, h: 88,  color: COL.yellow, shade: COL.yellow_d, highlight: COL.yellow_h, style: 'yellow' });
+    addFg({ x: 100, y: 226, w: 22, h: 64,  color: COL.white, shade: COL.white_d, highlight: COL.white_h,
+            style: 'simple', awning: { color: COL.coral, w: 20, h: 4 } });
+    addFg({ x: 122, y: 218, w: 14, h: 72,  color: COL.gray,  shade: COL.gray_d,  highlight: COL.gray_h, style: 'simple' });
+    addFg({ x: 136, y: 210, w: 26, h: 80,  color: COL.coral, shade: COL.coral_d, highlight: COL.coral_h,
+            style: 'brownstone', rooftop: true });
+    addFg({ x: 162, y: 230, w: 20, h: 60,  color: COL.coral, shade: COL.coral_d, highlight: COL.coral_h,
+            style: 'brownstone', awning: { color: COL.awning_pink, w: 18, h: 4 } });
+
+    // Window generation per style
+    for (const b of fgBuildings) {
+      b.windows = [];
+      b.flashT = 0;
+      if (b.style === 'simple') {
+        const cols = Math.max(1, Math.floor((b.w - 6) / 7));
+        const rows = Math.max(2, Math.floor((b.h - 14) / 10));
+        const winW = Math.max(3, Math.floor((b.w - 6) / cols) - 2);
+        const winH = 6;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const cx = b.x + 3 + c * (winW + 2);
+            const cy = b.y + 6 + r * 10;
+            if (cy + winH < b.y + b.h - 12) {
+              b.windows.push({ x: cx, y: cy, w: winW, h: winH });
+            }
+          }
+        }
+      } else if (b.style === 'pinkmodern' || b.style === 'yellow') {
+        const cols = Math.max(2, Math.floor((b.w - 8) / 11));
+        const rows = Math.max(3, Math.floor((b.h - 16) / 16));
+        const winW = Math.floor((b.w - 8) / cols) - 2;
+        const winH = 11;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const cx = b.x + 4 + c * (winW + 2);
+            const cy = b.y + 8 + r * 16;
+            if (cy + winH < b.y + b.h - 12) {
+              b.windows.push({ x: cx, y: cy, w: winW, h: winH, big: true });
+            }
+          }
+        }
+      } else if (b.style === 'brownstone') {
+        const cols = Math.max(2, Math.floor((b.w - 6) / 6));
+        const rows = Math.max(3, Math.floor((b.h - 16) / 9));
+        const winW = 4, winH = 5;
+        const colStep = (b.w - 6) / cols;
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const cx = b.x + 3 + Math.round(c * colStep + (colStep - winW) / 2);
+            const cy = b.y + 6 + r * 9;
+            if (cy + winH < b.y + b.h - 10) {
+              b.windows.push({ x: cx, y: cy, w: winW, h: winH });
+            }
+          }
+        }
+      }
+    }
+
+    // ---------- Trees ----------
+    const trees = [
+      { x: 16,  y: 298, r: 5, phase: Math.random() * 10 },
+      { x: 50,  y: 300, r: 4, phase: Math.random() * 10 },
+      { x: 102, y: 300, r: 4, phase: Math.random() * 10 },
+      { x: 124, y: 300, r: 3, phase: Math.random() * 10 },
+      { x: 152, y: 300, r: 4, phase: Math.random() * 10 },
+      { x: 174, y: 300, r: 3, phase: Math.random() * 10 },
+    ];
+
+    // ---------- Cars ----------
+    const cars = [];
+    function spawnCar() {
+      const types = ['car', 'car', 'car', 'truck'];
+      const type = types[Math.floor(Math.random() * types.length)];
+      const colors = type === 'car'
+        ? [COL.car_blue, COL.car_red, COL.car_dk, '#3a8aa8', COL.yellow]
+        : [COL.truck, '#e0d8b0', COL.coral];
+      cars.push({
+        x: -22,
+        y: 314,
+        speed: 8 + Math.random() * 6,
+        type,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      });
+    }
+    spawnCar(); cars[0].x = 60;
+
+    // ---------- Tap interaction ----------
+    scene.onTap((x, y) => {
+      // Tree → spawn a bird from it
+      for (const t of trees) {
+        const dx = x - t.x, dy = y - t.y + t.r;
+        if (dx * dx + dy * dy < (t.r + 3) * (t.r + 3)) {
+          birds.push({
+            x: t.x, y: t.y - t.r * 2,
+            speed: (Math.random() < 0.5 ? -1 : 1) * 22,
+            flap: 0,
+          });
+          t.shakeT = 0.4;
+          return;
+        }
+      }
+      // Building → window flash
+      for (let i = fgBuildings.length - 1; i >= 0; i--) {
+        const b = fgBuildings[i];
+        if (x >= b.x && x < b.x + b.w && y >= b.y && y <= b.y + b.h) {
+          b.flashT = 0.7;
+          return;
+        }
+      }
+    });
+
+    // ---------- Update ----------
+    function update(dt) {
+      time += dt;
+      // Clouds
+      for (const c of clouds) {
+        c.x += c.speed * dt;
+        let maxX = 0;
+        for (const p of c.puffs) maxX = Math.max(maxX, p.dx + p.w);
+        if (c.x > 200) {
+          c.x = -maxX - 10;
+          c.y = 4 + Math.random() * 130;
+        }
+      }
+      // Birds
+      for (let i = birds.length - 1; i >= 0; i--) {
+        const b = birds[i];
+        b.x += b.speed * dt;
+        b.flap += dt * 12;
+        if ((b.speed > 0 && b.x > 196) || (b.speed < 0 && b.x < -10)) birds.splice(i, 1);
+      }
+      if (birds.length < 3 && Math.random() < dt * 0.3) spawnBird();
+      // Cars
+      for (let i = cars.length - 1; i >= 0; i--) {
+        const c = cars[i];
+        c.x += c.speed * dt;
+        if (c.x > 220) cars.splice(i, 1);
+      }
+      if (cars.length < 2 && Math.random() < dt * 0.4) spawnCar();
+      // Tree shake decay
+      for (const t of trees) if (t.shakeT > 0) t.shakeT -= dt;
+      // Building flash decay
+      for (const b of fgBuildings) if (b.flashT > 0) b.flashT -= dt;
+    }
+
+    // ---------- Drawing ----------
+    function drawSky(ctx) {
+      for (let y = 0; y < ROAD_Y; y++) {
+        const t = y / ROAD_Y;
+        fillRect(ctx, 0, y, 180, 1, lerpColor(COL.sky_top, COL.sky_bot, Math.min(1, t * 1.2)));
+      }
+    }
+
+    function drawCloud(ctx, c) {
+      const cx = Math.round(c.x), cy = c.y;
+      // Base white body
+      for (const p of c.puffs) {
+        fillRect(ctx, cx + p.dx, cy + p.dy, p.w, p.h, COL.cloud);
+      }
+      // Shadow band on bottom-most puffs
+      let maxY = 0;
+      for (const p of c.puffs) maxY = Math.max(maxY, p.dy + p.h);
+      for (const p of c.puffs) {
+        if (p.dy + p.h >= maxY - 1) {
+          fillRect(ctx, cx + p.dx, cy + p.dy + p.h - 2, p.w, 2, COL.cloud_shade);
+          fillRect(ctx, cx + p.dx, cy + p.dy + p.h - 1, p.w, 1, COL.cloud_dark);
+        }
+      }
+      // Stray "snow" dots near the cloud (chunky pixel feel)
+      const seedSeed = (cx * 7 + cy * 13) % 100;
+      if (seedSeed > 30) {
+        pixel(ctx, cx - 3, cy + 4, COL.cloud);
+        pixel(ctx, cx + 70, cy + 6, COL.cloud);
+      }
+    }
+
+    function drawBird(ctx, b) {
+      const x = Math.floor(b.x), y = Math.floor(b.y);
+      const flap = Math.floor(b.flap) % 2;
+      if (flap === 0) {
+        pixel(ctx, x, y, COL.bird);
+        pixel(ctx, x + 1, y - 1, COL.bird);
+        pixel(ctx, x + 2, y, COL.bird);
+        pixel(ctx, x + 3, y - 1, COL.bird);
+        pixel(ctx, x + 4, y, COL.bird);
+      } else {
+        pixel(ctx, x, y, COL.bird);
+        pixel(ctx, x + 1, y, COL.bird);
+        pixel(ctx, x + 2, y - 1, COL.bird);
+        pixel(ctx, x + 3, y, COL.bird);
+        pixel(ctx, x + 4, y, COL.bird);
+      }
+    }
+
+    function drawMidBuilding(ctx, b) {
+      const top = MID_BASE - b.h;
+      fillRect(ctx, b.x, top, b.w, b.h, b.color);
+      fillRect(ctx, b.x, top, b.w, 1, lerpColor(b.color, '#000', 0.2));
+      fillRect(ctx, b.x + b.w - 1, top, 1, b.h, lerpColor(b.color, '#000', 0.15));
+      if (b.antenna) {
+        const ax = b.x + Math.floor(b.w / 2);
+        fillRect(ctx, ax, top - b.antenna, 1, b.antenna, lerpColor(b.color, '#000', 0.3));
+      }
+      for (const w of b.windows) fillRect(ctx, b.x + w.x, top + w.y, 2, 2, COL.win_mid);
+    }
+
+    function drawFgBuilding(ctx, b) {
+      // Body
+      fillRect(ctx, b.x, b.y, b.w, b.h, b.color);
+      // Edges
+      fillRect(ctx, b.x, b.y, 1, b.h, b.highlight);
+      fillRect(ctx, b.x + b.w - 1, b.y, 1, b.h, b.shade);
+      // Top trim
+      fillRect(ctx, b.x, b.y, b.w, 2, lerpColor(b.color, '#000', 0.18));
+      fillRect(ctx, b.x - 1, b.y - 1, b.w + 2, 1, b.shade);
+
+      // Antenna
+      if (b.antenna) {
+        const ax = b.x + Math.floor(b.w / 2);
+        fillRect(ctx, ax, b.y - 9, 1, 9, b.shade);
+        fillRect(ctx, ax - 2, b.y - 10, 5, 1, b.shade);
+        if (Math.floor(time * 1.5) % 2 === 0) pixel(ctx, ax, b.y - 11, '#e43b44');
+      }
+      // Rooftop water tank
+      if (b.rooftop) {
+        const rx = b.x + 4;
+        fillRect(ctx, rx, b.y - 5, 6, 5, b.shade);
+        fillRect(ctx, rx, b.y - 6, 6, 1, lerpColor(b.shade, '#000', 0.3));
+        fillRect(ctx, rx + 5, b.y - 4, 1, 4, lerpColor(b.shade, '#000', 0.3));
+      }
+
+      // Windows
+      const flashing = b.flashT > 0;
+      for (const w of b.windows) {
+        // Frame
+        fillRect(ctx, w.x - 1, w.y - 1, w.w + 2, w.h + 2, b.shade);
+        // Glass
+        const baseColor = flashing ? COL.win_warm : COL.win_glass;
+        fillRect(ctx, w.x, w.y, w.w, w.h, baseColor);
+        // Glass diagonal highlight (modern reflective)
+        if (w.big) {
+          fillRect(ctx, w.x, w.y, w.w, 1, lerpColor(baseColor, '#fff', 0.4));
+          for (let dy = 1; dy < w.h - 1; dy += 2) {
+            pixel(ctx, w.x + 1, w.y + dy, lerpColor(baseColor, '#fff', 0.3));
+          }
+          // Vertical mullion
+          fillRect(ctx, w.x + Math.floor(w.w / 2), w.y, 1, w.h, lerpColor(baseColor, '#000', 0.25));
+        } else {
+          fillRect(ctx, w.x, w.y, w.w, 1, lerpColor(baseColor, '#fff', 0.3));
+        }
+      }
+
+      // Awning
+      if (b.awning) {
+        const aY = b.y + b.h - 12;
+        const aX = b.x + Math.floor((b.w - b.awning.w) / 2);
+        fillRect(ctx, aX, aY, b.awning.w, b.awning.h, b.awning.color);
+        for (let sx = aX + 1; sx < aX + b.awning.w; sx += 3) {
+          fillRect(ctx, sx, aY, 1, b.awning.h, lerpColor(b.awning.color, '#fff', 0.3));
+        }
+        fillRect(ctx, aX, aY + b.awning.h, b.awning.w, 1, lerpColor(b.awning.color, '#000', 0.4));
+      }
+
+      // Door/storefront window at base
+      if (b.h >= 60) {
+        const doorW = Math.min(8, b.w - 4);
+        const dx = b.x + Math.floor(b.w / 2) - Math.floor(doorW / 2);
+        const dy = b.y + b.h - 7;
+        fillRect(ctx, dx, dy, doorW, 7, COL.win_dark);
+        fillRect(ctx, dx, dy, doorW, 1, b.shade);
+        fillRect(ctx, dx + 1, dy + 1, doorW - 2, 4, COL.win_glass);
+      }
+    }
+
+    function drawTree(ctx, t) {
+      const sway = Math.sin(time * 0.6 + t.phase) * 0.5;
+      const shake = (t.shakeT > 0) ? Math.sin(t.shakeT * 30) * 1.5 : 0;
+      const cx = Math.round(t.x + sway + shake);
+      const cy = t.y - t.r;
+      // Trunk
+      fillRect(ctx, t.x, t.y, 1, t.r, COL.trunk);
+      // Canopy - circular blob
+      for (let dy = -t.r; dy <= t.r; dy++) {
+        const w = t.r - Math.abs(dy);
+        if (w < 0) continue;
+        fillRect(ctx, cx - w, cy + dy, w * 2 + 1, 1, COL.tree);
+      }
+      // Highlights on top-left
+      pixel(ctx, cx - t.r + 1, cy - t.r + 2, COL.tree_h);
+      pixel(ctx, cx - 1, cy - t.r + 1, COL.tree_h);
+      pixel(ctx, cx - t.r + 2, cy - t.r + 3, COL.tree_h);
+      // Shadows on bottom-right
+      pixel(ctx, cx + 1, cy + t.r - 1, COL.tree_d);
+      pixel(ctx, cx + t.r - 1, cy + t.r - 2, COL.tree_d);
+      pixel(ctx, cx + t.r - 2, cy + t.r - 1, COL.tree_d);
+    }
+
+    function drawRoad(ctx) {
+      // Sidewalk
+      fillRect(ctx, 0, SIDEWALK_Y, 180, ROAD_Y - SIDEWALK_Y, COL.sidewalk);
+      fillRect(ctx, 0, SIDEWALK_Y, 180, 1, lerpColor(COL.sidewalk, '#000', 0.2));
+      for (let x = 0; x < 180; x += 12) pixel(ctx, x, SIDEWALK_Y + 4, lerpColor(COL.sidewalk, '#000', 0.25));
+      // Road
+      fillRect(ctx, 0, ROAD_Y, 180, ROAD_BOT - ROAD_Y, COL.road);
+      fillRect(ctx, 0, ROAD_Y, 180, 1, COL.road_d);
+      fillRect(ctx, 0, ROAD_BOT - 1, 180, 1, COL.road_d);
+      // Center yellow line
+      const lineY = ROAD_Y + Math.floor((ROAD_BOT - ROAD_Y) / 2);
+      for (let x = 0; x < 180; x += 12) {
+        fillRect(ctx, x, lineY, 7, 1, COL.road_line);
+      }
+    }
+
+    function drawCar(ctx, c) {
+      const x = Math.floor(c.x), y = c.y;
+      if (c.type === 'truck') {
+        // Cargo box
+        fillRect(ctx, x + 8, y - 7, 14, 7, c.color);
+        fillRect(ctx, x + 8, y - 7, 14, 1, lerpColor(c.color, '#000', 0.3));
+        // Cab
+        fillRect(ctx, x, y - 5, 8, 5, lerpColor(c.color, '#000', 0.15));
+        // Window
+        fillRect(ctx, x + 1, y - 4, 5, 2, COL.win_glass);
+        // Wheels
+        fillRect(ctx, x + 2, y, 3, 1, COL.car_dk);
+        fillRect(ctx, x + 16, y, 3, 1, COL.car_dk);
+      } else {
+        // Body
+        fillRect(ctx, x, y - 3, 16, 3, c.color);
+        // Roof
+        fillRect(ctx, x + 3, y - 6, 9, 3, c.color);
+        fillRect(ctx, x + 3, y - 6, 9, 1, lerpColor(c.color, '#000', 0.3));
+        // Window
+        fillRect(ctx, x + 4, y - 5, 7, 2, COL.win_glass);
+        // Wheels
+        fillRect(ctx, x + 1, y, 3, 1, COL.car_dk);
+        fillRect(ctx, x + 12, y, 3, 1, COL.car_dk);
+      }
+    }
+
+    function draw(ctx) {
+      drawSky(ctx);
+      for (const c of clouds) drawCloud(ctx, c);
+      for (const b of birds) drawBird(ctx, b);
+      for (const b of midBuildings) drawMidBuilding(ctx, b);
+      for (const b of fgBuildings) drawFgBuilding(ctx, b);
+      for (const t of trees) drawTree(ctx, t);
+      drawRoad(ctx);
+      for (const c of cars) drawCar(ctx, c);
+    }
+
+    scene.start({ update, draw });
+  })();
+  </script>
+</body>
+</html>
