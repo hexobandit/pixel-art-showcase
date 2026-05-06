@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#15151a">
+  <title>Pixel City — Style Mockups (reference)</title>
+  <style>
+    :root {
+      --bg: #15151a;
+      --panel: #1f1f26;
+      --panel-2: #2a2a33;
+      --text: #ececf0;
+      --muted: #8b8b95;
+      --accent: #7aa2ff;
+      --border: #2e2e38;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      max-width: 460px;
+      margin: 0 auto;
+      padding: 16px 14px 64px;
+    }
+    header { margin-bottom: 12px; }
+    h1 { font-size: 18px; margin: 0 0 4px; font-weight: 600; letter-spacing: -0.01em; }
+    .subtitle { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0; }
+
+    .controls {
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      padding: 10px 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .control-row + .control-row { margin-top: 8px; }
+    .control-row label { color: var(--muted); min-width: 38px; }
+    .control-row input[type=range] {
+      flex: 1;
+      accent-color: var(--accent);
+    }
+    .time-label {
+      font-variant-numeric: tabular-nums;
+      min-width: 48px;
+      text-align: right;
+      font-weight: 500;
+    }
+    .play-btn {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .play-btn:hover { background: #34343f; }
+    .play-btn.active { background: var(--accent); color: #0a0a14; border-color: var(--accent); }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .panel h2 {
+      font-size: 13px;
+      margin: 0 0 2px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .panel .tag {
+      display: inline-block;
+      font-size: 10px;
+      color: var(--muted);
+      background: var(--panel-2);
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .panel p {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+      margin: 4px 0 10px;
+    }
+    .stage {
+      width: 100%;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .stage-block { aspect-ratio: 9 / 12; }
+    .stage-tall  { aspect-ratio: 2 / 3; }
+    .stage canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .variant-label {
+      font-size: 10px;
+      color: var(--muted);
+      margin: 10px 0 6px;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+    footer {
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+      margin-top: 24px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Pixel City — Style Mockups</h1>
+    <p class="subtitle">Three pixel art directions for an autonomous tiny city. Drag the time slider to see day → night.</p>
+  </header>
+
+  <div class="controls">
+    <div class="control-row">
+      <label for="time">Time</label>
+      <input type="range" id="time" min="0" max="1439" value="540" step="1">
+      <span class="time-label" id="time-label">09:00</span>
+    </div>
+    <div class="control-row">
+      <label></label>
+      <button class="play-btn" id="play-btn">▶ Auto-cycle day</button>
+    </div>
+  </div>
+
+  <section class="panel">
+    <h2><span class="tag">A</span>Chunky Cartoon Isometric</h2>
+    <p>Bold flat colors, big silhouettes. Cheapest to produce per asset, scales well to a large city.</p>
+    <div class="stage stage-block" id="stage-a"></div>
+    <div class="variant-label">↓ city block + elevated train + tram</div>
+    <div class="stage stage-tall" id="stage-a-city"></div>
+  </section>
+
+  <section class="panel">
+    <h2><span class="tag">B</span>Detailed Isometric</h2>
+    <p>Richer palette, shading, props (lamps, fences, hedges). Best vibe but slowest to extend.</p>
+    <div class="stage stage-block" id="stage-b"></div>
+    <div class="variant-label">↓ city block + elevated train + tram</div>
+    <div class="stage stage-tall" id="stage-b-city"></div>
+  </section>
+
+  <section class="panel">
+    <h2><span class="tag">C</span>Top-Down Chibi</h2>
+    <p>Cute big-headed characters, simple top-down. Easiest math, best for procedural growth.</p>
+    <div class="stage stage-block" id="stage-c"></div>
+    <div class="variant-label">↓ town with station + train (stops to pick up)</div>
+    <div class="stage stage-tall" id="stage-c-city"></div>
+  </section>
+
+  <footer>
+    Mockups render programmatically via PixiJS — no asset files. Pick a winner, then build out the sim.
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
+  <script src="js/shared.js"></script>
+  <script src="js/style-chunky.js"></script>
+  <script src="js/style-detailed.js"></script>
+  <script src="js/style-topdown.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

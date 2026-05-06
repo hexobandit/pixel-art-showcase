@@ -2,49 +2,121 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Pixel Art Showcase</title>
-  <link rel="stylesheet" href="shared/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#10162a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Pixel City</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #10162a;
+      color: #ececf0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+    #stage {
+      position: absolute;
+      inset: 0;
+    }
+    #stage canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .hud {
+      position: absolute;
+      left: 0;
+      right: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: max(env(safe-area-inset-top, 0), 12px) 14px 0;
+    }
+    .hud > * { pointer-events: auto; }
+    .clock {
+      background: rgba(20, 22, 36, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-variant-numeric: tabular-nums;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .speed {
+      display: flex;
+      gap: 4px;
+      background: rgba(20, 22, 36, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 4px;
+    }
+    .speed button {
+      background: transparent;
+      border: 0;
+      color: #ececf0;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      min-width: 36px;
+    }
+    .speed button.active {
+      background: rgba(122, 162, 255, 0.9);
+      color: #0a0a14;
+    }
+    .speed button:not(.active):hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .footer-link {
+      position: absolute;
+      bottom: max(env(safe-area-inset-bottom, 0), 10px);
+      right: 14px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+      text-decoration: none;
+      pointer-events: auto;
+    }
+    .footer-link:hover { color: rgba(255, 255, 255, 0.7); }
+  </style>
 </head>
-<body class="gallery">
-  <h1 class="gallery-title">Pixel Art Showcase</h1>
-  <p class="gallery-sub">180×320 · Endesga 32 · tap things</p>
-
-  <div class="gallery-grid">
-    <a class="card" href="scenes/01-city-street.html">
-      <div class="card-num">01</div>
-      <div class="card-title">City Street</div>
-      <div class="card-desc">Layered night skyline, lit windows flickering, streetlamps glowing, rain falling.</div>
-      <div class="card-tap">tap a building → all its windows light up</div>
-    </a>
-
-    <a class="card" href="scenes/02-town-overview.html">
-      <div class="card-num">02</div>
-      <div class="card-title">Town Overview</div>
-      <div class="card-desc">Top-down view: train, big buildings, traffic, pedestrians, cyclist, rows of houses.</div>
-      <div class="card-tap">tap a house → smoke from chimney · tap a car → honk</div>
-    </a>
-
-    <a class="card" href="scenes/03-fishing-pier.html">
-      <div class="card-num">03</div>
-      <div class="card-title">Fishing Pier</div>
-      <div class="card-desc">Sun setting over the sea, boats drifting, seagulls, fisherman.</div>
-      <div class="card-tap">tap water → ripple</div>
-    </a>
-
-    <a class="card" href="scenes/04-twilight-skyline.html">
-      <div class="card-num">04</div>
-      <div class="card-title">Twilight Skyline</div>
-      <div class="card-desc">Layered dusk cityscape, distant skyscrapers, brownstones with warm-lit windows.</div>
-      <div class="card-tap">tap a building → all its windows light up</div>
-    </a>
-
-    <a class="card" href="scenes/05-daylight-city.html">
-      <div class="card-num">05</div>
-      <div class="card-title">Daylight City</div>
-      <div class="card-desc">Bright sky with chunky pixel clouds, pastel modern buildings, trees, cars on the road.</div>
-      <div class="card-tap">tap a tree → bird flies out · tap a building → windows flash</div>
-    </a>
+<body>
+  <div id="stage"></div>
+  <div class="hud">
+    <div class="clock" id="clock">07:30</div>
+    <div class="speed">
+      <button data-speed="0">⏸</button>
+      <button data-speed="1">1×</button>
+      <button data-speed="4">4×</button>
+      <button data-speed="16">16×</button>
+    </div>
   </div>
+  <a class="footer-link" href="mockups.html">style mockups</a>
+
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@8/dist/pixi.min.js"></script>
+  <script src="js/shared.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/city.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
